@@ -1,9 +1,10 @@
 #!/bin/env python
 import os
-from flask import Flask, request, redirect, url_for, send_from_directory
+from flask import Flask, request, redirect, url_for, send_from_directory, render_template
 from werkzeug import secure_filename
 from PIL import Image
 import json
+import random
 
 IMG_FOLDER = './img/'
 ALLOWED_EXTENSIONS = set(['png', 'jpg', 'jpeg', 'gif'])
@@ -48,20 +49,47 @@ def to_grayscale():
 
 @app.route('/analog')
 def to_analog():
-    
+    pass
+
+@app.route('/vector')
+def to_vector():
+    filename = 'vector.png'
+    try:
+        grayscale_image = Image.open(os.path.join(app.config['IMG_FOLDER'],'grayscale.png'))
+    except:
+        to_grayscale()
+    vector_size = (grayscale_image.size[0]*16, grayscale_image.size[1]*16)
+    vector_image = Image.new('L', vector_size, 1)
+    vector_pixels = vector_image.load()
+    image = {}
+    vector_data = []
+    for index,pixel in enumerate(grayscale_image.getdata()):
+        x = (index % grayscale_image.size[0])*16
+        y = (index / grayscale_image.size[0])*16
+        #image_json['data'].append([x, y])
+        #image_json['data'].append(pixel)
+        for i in range(pixel):
+            vector_pixels[x+random.randint(0,15), y+random.randint(0,15)] = 255
+        #    image_json['data'].append([x, y])
+        #    image_json['data'].append(i)
+    vector_image.save(os.path.join(app.config['IMG_FOLDER'], filename))
+    return redirect(url_for('get_file', filename=filename))
 
 @app.route('/json')
 def to_json():
     try:
-        image = Image.open(os.path.join(app.config['IMG_FOLDER'],'grayscale.png'))
+        image = Image.open(os.path.join(app.config['IMG_FOLDER'],'vector.png'))
     except:
-        to_grayscale()
+        to_vector()
     image = image.convert('L',dither=Image.NONE)
     image_json = {}
     image_json['size'] = image.size
-    image_json['data'] = list(image.getdata())
+    image_json['data'] = []
     return json.JSONEncoder().encode(image_json)
 
+@app.route('/paper')
+def paper():
+    return render_template('paper.html')
 
 @app.route('/img/<filename>')
 def get_file(filename):
