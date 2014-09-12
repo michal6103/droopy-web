@@ -2,23 +2,82 @@
 <html>
 <head>
 <script type="text/javascript" src="static/js/paper.js"></script>
+<script src="http://code.jquery.com/jquery-1.10.1.min.js"></script>
 <script type="text/paperscript" canvas="myCanvas">
 
-	var image = {
-		"size" : [2,2],
-		"data" : [[0,0],[100,100],[500,100],[0,0]] 
-	}
+	var image = (function () {
+		var json = null;
+		$.ajax({
+			'async': false,
+			'global': false,
+			'url': "json",
+			'dataType': "json",
+			'success': function (data) {
+				json = data;
+			}
+		});
+		return json;
+	})(); 
 
+
+	var maxCount = image.data.length;
+	var count = 0;
+	var draw = true;
+	var scale = 10.0;
 	var myPath = new Path();
-	myPath.strokeColor = 'black';
-	myPath.add(new Point(image.data[0][0],image.data[0][1]));
-	myPath.add(new Point(image.data[1][0],image.data[1][1]));
-	myPath.add(new Point(image.data[2][0],image.data[2][1]));
-	myPath.add(new Point(image.data[3][0],image.data[3][1]));
 
-	function onResize(event) {
-		//path.position = view.center;
+	myPath.strokeColor = 'black';
+	myPath.strokeWidth = 1.0;
+
+
+
+function onFrame(event) {
+	if (draw) {
+		if (count <= maxCount) {
+			var x;
+			var y = Math.floor(count/image.size[0]);
+			var pixel;
+            //var i = count;
+            for(var i=count; i<(count + image.size[0]); i++){
+		    	if ( y % 2 ){
+			    	x = image.size[0] - (i % image.size[0]) - 1;
+    			}else{
+    				x = i % image.size[0];
+    			}
+    			pixel = image.data[y*image.size[0] + x];
+    			for(var j=0; j<((255-pixel)/16); j++){
+    				myPath.add(new Point(x*scale + Math.random()*scale, y*scale + Math.random()*scale));
+    			}
+            }
+            count += image.size[0];
+            //count++;
+        } else {
+			draw = false;
+            view.center = myPath.bounds.center;
+		}
 	}
+}
+
+function onResize(event) {
+      view.center = myPath.bounds.center;
+}
+
+
+function sign(x) {
+    return x > 0 ? 1 : x < 0 ? -1 : 0;
+}
+
+
+function onMouseDrag(event) {
+    if (Key.isDown('control')){
+        new_zoom = view.zoom - 0.05 * sign(event.delta.y);
+        if( new_zoom > 0.1 && new_zoom < 1.5 ){
+            view.zoom = new_zoom;
+        }
+    }else{
+            view.scrollBy(event.downPoint - event.point);
+    }
+}
 
 </script>
 </head>

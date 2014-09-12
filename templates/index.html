@@ -1,0 +1,26 @@
+{% extends "bootstrap/base.html" %}
+{% import "bootstrap/wtf.html" as wtf %}
+{% import "bootstrap/fixes.html" as fixes %}
+
+{% block content %}
+<div class="container">
+
+<h1>Upload image</h1>
+<form action="" method="post" enctype="multipart/form-data" class="form" role="form">
+<fieldset>
+
+  <input id="file" name="file" class="input-file" type="file">
+  <p class="help-block">Please upload an image. Reasonable size is 128x128 pixels.</p>
+
+  <button id="upload" name="upload" class="btn btn-default">Upload</button>
+
+</fieldset>
+</form>
+
+</div>
+{% endblock %}
+
+{% block head %}
+{{super()}}
+{{fixes.ie8()}}
+{% endblock %}
