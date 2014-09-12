@@ -20,7 +20,7 @@
 	})(); 
 
 
-	var maxCount = image.data.length;
+	var maxCount = image.analog_data.length;
 	var count = 0;
 	var draw = true;
 	var scale = 10.0;
@@ -34,7 +34,7 @@
 function onFrame(event) {
 	if (draw) {
 		if (count <= maxCount) {
-			var x;
+			/*var x;
 			var y = Math.floor(count/image.size[0]);
 			var pixel;
             //var i = count;
@@ -50,7 +50,9 @@ function onFrame(event) {
     			}
             }
             count += image.size[0];
-            //count++;
+            */
+            myPath.add(new Point(image.analog_data[count]));
+            count++;
         } else {
 			draw = false;
             view.center = myPath.bounds.center;
