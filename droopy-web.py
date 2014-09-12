@@ -5,11 +5,12 @@ from flask_bootstrap import Bootstrap
 #from werkzeug import secure_filename
 from PIL import Image
 import json
-#import random
+from random import random
 
 
 IMG_FOLDER = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'img/')
 ALLOWED_EXTENSIONS = set(['png', 'jpg', 'jpeg', 'gif'])
+SCALE = 10.0
 
 
 app = Flask(__name__)
@@ -17,6 +18,7 @@ Bootstrap(app)
 app.debug = True
 app.config['PROPAGATE_EXCEPTIONS'] = True
 app.config['IMG_FOLDER'] = IMG_FOLDER
+app.config['IMAGE_SCALE'] = SCALE
 
 
 def allowed_file(filename):
@@ -50,9 +52,18 @@ def to_grayscale():
     #return redirect(url_for('get_file', filename=filename))
 
 
-@app.route('/analog')
-def to_analog():
-    pass
+def to_analog(image):
+    points = []
+    scale = app.config['IMAGE_SCALE']
+    pixels = list(image.getdata())
+    x_size, y_size = image.size
+    for x in range(x_size):
+        for y in range(y_size):
+            pixel = pixels[y * x_size + x]
+            #generate random pointo for every brightness point in pixel
+            for i in range(int((255 - pixel) / 16)):
+                points.append(((x + random()) * scale, (y + random()) * scale))
+    return points
 
 
 @app.route('/json')
@@ -67,7 +78,7 @@ def to_json():
     image_json = {}
     image_json['size'] = image.size
     image_json['data'] = list(image.getdata())
-    image_json['analog_data'] = []
+    image_json['analog_data'] = to_analog(image)
     #pixel = []
     return json.JSONEncoder().encode(image_json)
 
