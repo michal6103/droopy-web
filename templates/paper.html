@@ -23,17 +23,17 @@
 	var maxCount = image.analog_data.length;
 	var count = 0;
 	var draw = true;
-	var scale = 10.0;
+	var scale = 30.0;
 	var myPath = new Path();
 
 	myPath.strokeColor = 'black';
-	myPath.strokeWidth = 1.0;
+	myPath.strokeWidth = 1.0 / scale;
 
 
 
 function onFrame(event) {
 	if (draw) {
-		if (count <= maxCount) {
+		if (count < maxCount) {
 			/*var x;
 			var y = Math.floor(count/image.size[0]);
 			var pixel;
@@ -51,17 +51,22 @@ function onFrame(event) {
             }
             count += image.size[0];
             */
-            myPath.add(new Point(image.analog_data[count]));
-            count++;
+            for(var i=count; i<count + image.size[0]; i++){
+                if( i < maxCount ){
+                    myPath.add(new Point(image.analog_data[i]));
+                }
+            }
+            count += image.size[0];
         } else {
 			draw = false;
-            view.center = myPath.bounds.center;
+            onResize(event)
 		}
 	}
 }
 
 function onResize(event) {
       view.center = myPath.bounds.center;
+      view.zoom = scale;
 }
 
 
@@ -73,7 +78,7 @@ function sign(x) {
 function onMouseDrag(event) {
     if (Key.isDown('control')){
         new_zoom = view.zoom - 0.05 * sign(event.delta.y);
-        if( new_zoom > 0.1 && new_zoom < 1.5 ){
+        if( new_zoom > 0.1 && new_zoom < 15.0 ){
             view.zoom = new_zoom;
         }
     }else{
