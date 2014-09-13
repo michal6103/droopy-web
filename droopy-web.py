@@ -10,7 +10,7 @@ from random import random
 
 IMG_FOLDER = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'img/')
 ALLOWED_EXTENSIONS = set(['png', 'jpg', 'jpeg', 'gif'])
-SCALE = 10.0
+SCALE =0.2
 
 
 app = Flask(__name__)
@@ -55,14 +55,22 @@ def to_grayscale():
 def to_analog(image):
     points = []
     scale = app.config['IMAGE_SCALE']
+    offset_x = 20.0
+    offset_y = 33.0
     pixels = list(image.getdata())
     x_size, y_size = image.size
-    for x in range(x_size):
-        for y in range(y_size):
-            pixel = pixels[y * x_size + x]
+    for y in range(y_size):
+        for x in range(x_size):
+            if y % 2:
+                pixel = pixels[y * x_size + x]
+                xr = x;
+            else:
+                pixel = pixels[(y+1) * x_size - x]
+                xr = x_size - x;
+
             #generate random pointo for every brightness point in pixel
             for i in range(int((255 - pixel) / 16)):
-                points.append(((x + random()) * scale, (y + random()) * scale))
+                points.append(((xr + random()) * scale + offset_x, (y + random()) * scale + offset_y))
     return points
 
 
@@ -93,4 +101,4 @@ def get_file(filename):
     return send_from_directory(app.config['IMG_FOLDER'], filename)
 
 if __name__ == '__main__':
-    app.run()
+    app.run(host='0.0.0.0')
