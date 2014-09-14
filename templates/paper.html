@@ -69,12 +69,16 @@ function onResize(event) {
       view.zoom = scale;
 }
 
+function onMouseUp(event) {
+      view.center = myPath.bounds.center;
+      view.zoom = scale;
+}
 
 function sign(x) {
     return x > 0 ? 1 : x < 0 ? -1 : 0;
 }
 
-
+/*
 function onMouseDrag(event) {
     if (Key.isDown('control')){
         new_zoom = view.zoom - 0.05 * sign(event.delta.y);
@@ -85,6 +89,7 @@ function onMouseDrag(event) {
             view.scrollBy(event.downPoint - event.point);
     }
 }
+*/
 
 </script>
 </head>
