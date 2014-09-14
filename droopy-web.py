@@ -55,8 +55,8 @@ def to_grayscale():
 def to_analog(image):
     points = []
     scale = app.config['IMAGE_SCALE']
-    offset_x = 20.0
-    offset_y = 33.0
+    offset_x = 11.0
+    offset_y = 30.0
     pixels = list(image.getdata())
     x_size, y_size = image.size
     for y in range(y_size):
@@ -70,7 +70,7 @@ def to_analog(image):
 
             #generate random pointo for every brightness point in pixel
             for i in range(int((255 - pixel) / 16)):
-                points.append(((xr + random()) * scale + offset_x, (y + random()) * scale + offset_y))
+                points.append(((xr + random()*2.0) * scale + offset_x, (y + random()*2.0) * scale + offset_y))
     return points
 
 
