@@ -10,7 +10,7 @@ from random import random
 
 IMG_FOLDER = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'img/')
 ALLOWED_EXTENSIONS = set(['png', 'jpg', 'jpeg', 'gif'])
-SCALE =0.2
+SCALE =0.1
 
 
 app = Flask(__name__)
