@@ -23,7 +23,7 @@
 	var maxCount = image.analog_data.length;
 	var count = 0;
 	var draw = true;
-	var scale = 100.0;
+	var scale = 50.0;
 	var myPath = new Path();
 
 	myPath.strokeColor = 'black';
@@ -33,24 +33,10 @@
 
 function onFrame(event) {
 	if (draw) {
+        if ( count  <= image.size[0] ){
+            onResize();
+         }
 		if (count < maxCount) {
-			/*var x;
-			var y = Math.floor(count/image.size[0]);
-			var pixel;
-            //var i = count;
-            for(var i=count; i<(count + image.size[0]); i++){
-		    	if ( y % 2 ){
-			    	x = image.size[0] - (i % image.size[0]) - 1;
-    			}else{
-    				x = i % image.size[0];
-    			}
-    			pixel = image.data[y*image.size[0] + x];
-    			for(var j=0; j<((255-pixel)/16); j++){
-    				myPath.add(new Point(x*scale + Math.random()*scale, y*scale + Math.random()*scale));
-    			}
-            }
-            count += image.size[0];
-            */
             for(var i=count; i<count + image.size[0]; i++){
                 if( i < maxCount ){
                     myPath.add(new Point(image.analog_data[i]));
@@ -69,16 +55,16 @@ function onResize(event) {
       view.zoom = scale;
 }
 
-function onMouseUp(event) {
+/*function onMouseUp(event) {
       view.center = myPath.bounds.center;
       view.zoom = scale;
-}
+} */
 
 function sign(x) {
     return x > 0 ? 1 : x < 0 ? -1 : 0;
 }
 
-/*
+
 function onMouseDrag(event) {
     if (Key.isDown('control')){
         new_zoom = view.zoom - 0.05 * sign(event.delta.y);
@@ -89,7 +75,7 @@ function onMouseDrag(event) {
             view.scrollBy(event.downPoint - event.point);
     }
 }
-*/
+
 
 </script>
 </head>
