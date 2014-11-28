@@ -6,6 +6,10 @@ from flask_bootstrap import Bootstrap
 from PIL import Image
 import json
 from random import random
+from pyhull.voronoi import VoronoiTess
+import numpy as np
+from werkzeug.contrib.cache import SimpleCache
+
 
 
 IMG_FOLDER = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'img/')
@@ -19,6 +23,7 @@ app.debug = True
 app.config['PROPAGATE_EXCEPTIONS'] = True
 app.config['IMG_FOLDER'] = IMG_FOLDER
 app.config['IMAGE_SCALE'] = SCALE
+cache = SimpleCache()
 
 
 def allowed_file(filename):
@@ -32,6 +37,7 @@ def upload_file():
         file = request.files['file']
         if file and allowed_file(file.filename):
             #filename = secure_filename(file.filename)
+            cache.delete('points_spread')
             filename = 'source.png'
             file.save(os.path.join(app.config['IMG_FOLDER'], filename))
             return redirect(url_for('to_grayscale'))
@@ -55,8 +61,8 @@ def to_grayscale():
 def to_analog(image):
     points = []
     scale = app.config['IMAGE_SCALE']
-    offset_x = 11.0
-    offset_y = 30.0
+    offset_x = 0.0
+    offset_y = 0.0
     pixels = list(image.getdata())
     x_size, y_size = image.size
     for y in range(y_size):
@@ -65,13 +71,27 @@ def to_analog(image):
                 pixel = pixels[y * x_size + x]
                 xr = x;
             else:
-                pixel = pixels[(y+1) * x_size - x]
+                pixel = pixels[y * x_size - x]
                 xr = x_size - x;
 
-            #generate random pointo for every brightness point in pixel
+            #generate random points for every brightness point in pixel
             for i in range(int((255 - pixel) / 16)):
-                points.append(((xr + random()*2.0) * scale + offset_x, (y + random()*2.0) * scale + offset_y))
+                points.append(((xr + random()*1.0) * scale + offset_x, (y + random()*1.0) * scale + offset_y))
     return points
+
+
+def voronoi_spread(points, boundary):
+    #Move points to centers of voronoi regions
+    voronoi = VoronoiTess(points, add_bounding_box=True)
+    #compute centroid for every region
+    points_centered = []
+    for region in voronoi.regions:
+        region_vertices = [voronoi.vertices[point_index] for point_index in region]
+        x_avg = sum(x for (x, y) in region_vertices) / len(region_vertices)
+        y_avg = sum(y for (x, y) in region_vertices) / len(region_vertices)
+        if 0 < x_avg < boundary[0] and 0 < y_avg < boundary[1]:
+            points_centered.append((x_avg, y_avg))
+    return points_centered
 
 
 @app.route('/json')
@@ -86,7 +106,15 @@ def to_json():
     image_json = {}
     image_json['size'] = image.size
     image_json['data'] = list(image.getdata())
-    image_json['analog_data'] = to_analog(image)
+    points_spread = cache.get('points_spread')
+    if points_spread is None:
+        points_randomized = to_analog(image)
+        points_spread = points_randomized
+        for i in range(2):
+            print("Voronoi iteration {}".format(i))
+            points_spread = voronoi_spread(points_spread, image.size)
+        cache.set('points_spread', points_spread, timeout = 60 * 60)
+    image_json['analog_data'] = points_spread 
     #pixel = []
     return json.JSONEncoder().encode(image_json)
 
