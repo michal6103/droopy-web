@@ -14,7 +14,8 @@ from werkzeug.contrib.cache import SimpleCache
 
 IMG_FOLDER = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'img/')
 ALLOWED_EXTENSIONS = set(['png', 'jpg', 'jpeg', 'gif'])
-SCALE =0.1
+SCALE = 0.1
+RANDOM_OVERLAP = 0.8
 
 
 app = Flask(__name__)
@@ -23,6 +24,7 @@ app.debug = True
 app.config['PROPAGATE_EXCEPTIONS'] = True
 app.config['IMG_FOLDER'] = IMG_FOLDER
 app.config['IMAGE_SCALE'] = SCALE
+app.config['IMAGE_RANDOM_OVERLAP'] = RANDOM_OVERLAP
 cache = SimpleCache()
 
 
@@ -61,6 +63,7 @@ def to_grayscale():
 def to_analog(image):
     points = []
     scale = app.config['IMAGE_SCALE']
+    overlap = app.config['IMAGE_RANDOM_OVERLAP']
     offset_x = 0.0
     offset_y = 0.0
     pixels = list(image.getdata())
@@ -76,11 +79,16 @@ def to_analog(image):
 
             #generate random points for every brightness point in pixel
             for i in range(int((255 - pixel) / 16)):
-                points.append(((xr + random()*1.0) * scale + offset_x, (y + random()*1.0) * scale + offset_y))
+                points.append(((xr + random()*overlap) * scale + offset_x, (y + random()*overlap) * scale + offset_y))
     return points
 
 
-def voronoi_spread(points, boundary):
+def voronoi_spread(points):
+    #get image boundaries
+    boundary_x_min = min(x for (x,y) in points)
+    boundary_y_min = min(y for (x,y) in points)
+    boundary_x_max = max(x for (x,y) in points)
+    boundary_y_max = max(y for (x,y) in points)
     #Move points to centers of voronoi regions
     voronoi = VoronoiTess(points, add_bounding_box=True)
     #compute centroid for every region
@@ -89,7 +97,7 @@ def voronoi_spread(points, boundary):
         region_vertices = [voronoi.vertices[point_index] for point_index in region]
         x_avg = sum(x for (x, y) in region_vertices) / len(region_vertices)
         y_avg = sum(y for (x, y) in region_vertices) / len(region_vertices)
-        if 0 < x_avg < boundary[0] and 0 < y_avg < boundary[1]:
+        if boundary_x_min < x_avg < boundary_x_max and boundary_y_min < y_avg < boundary_y_max:
             points_centered.append((x_avg, y_avg))
     return points_centered
 
@@ -112,7 +120,7 @@ def to_json():
         points_spread = points_randomized
         for i in range(2):
             print("Voronoi iteration {}".format(i))
-            points_spread = voronoi_spread(points_spread, image.size)
+            points_spread = voronoi_spread(points_spread)
         cache.set('points_spread', points_spread, timeout = 60 * 60)
     image_json['analog_data'] = points_spread 
     #pixel = []
