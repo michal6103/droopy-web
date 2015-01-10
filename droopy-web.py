@@ -14,7 +14,7 @@ from werkzeug.contrib.cache import SimpleCache
 
 IMG_FOLDER = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'img/')
 ALLOWED_EXTENSIONS = set(['png', 'jpg', 'jpeg', 'gif'])
-SCALE = 0.1
+SCALE = 0.02
 RANDOM_OVERLAP = 0.8
 
 
@@ -53,7 +53,7 @@ def to_grayscale():
         image = Image.open(os.path.join(app.config['IMG_FOLDER'], 'source.png'))
     except:
         return redirect(url_for('upload_file'))
-    image = image.convert('L', dither=Image.NONE)
+    image = image.convert('1')
     filename = 'grayscale.png'
     image.save(os.path.join(app.config['IMG_FOLDER'], filename))
     return redirect(url_for('paper'))
@@ -70,16 +70,20 @@ def to_analog(image):
     x_size, y_size = image.size
     for y in range(y_size):
         for x in range(x_size):
-            if y % 2:
-                pixel = pixels[y * x_size + x]
-                xr = x;
-            else:
-                pixel = pixels[y * x_size - x]
-                xr = x_size - x;
+            #if y % 2:
+            #    pixel = pixels[y * x_size + x]
+            #    xr = x;
+            #else:
+            #    pixel = pixels[y * x_size - x]
+            #    xr = x_size - x;
 
             #generate random points for every brightness point in pixel
-            for i in range(int((255 - pixel) / 16)):
-                points.append(((xr + random()*overlap) * scale + offset_x, (y + random()*overlap) * scale + offset_y))
+            #for i in range(int((255 - pixel) / 16)):
+            #    points.append(((xr + random()*overlap) * scale + offset_x, (y + random()*overlap) * scale + offset_y))
+            pixel = pixels[y * x_size + x]
+            xr = x;
+            if not pixel:
+                points.append((xr * scale + offset_x, y * scale + offset_y))
     return points
 
 
@@ -95,10 +99,11 @@ def voronoi_spread(points):
     points_centered = []
     for region in voronoi.regions:
         region_vertices = [voronoi.vertices[point_index] for point_index in region]
-        x_avg = sum(x for (x, y) in region_vertices) / len(region_vertices)
-        y_avg = sum(y for (x, y) in region_vertices) / len(region_vertices)
-        if boundary_x_min < x_avg < boundary_x_max and boundary_y_min < y_avg < boundary_y_max:
-            points_centered.append((x_avg, y_avg))
+        if len(region_vertices):
+            x_avg = sum(x for (x, y) in region_vertices) / len(region_vertices)
+            y_avg = sum(y for (x, y) in region_vertices) / len(region_vertices)
+            if boundary_x_min < x_avg < boundary_x_max and boundary_y_min < y_avg < boundary_y_max:
+                points_centered.append((x_avg, y_avg))
     return points_centered
 
 
@@ -110,7 +115,7 @@ def to_json():
         to_grayscale()
     #grayscale_pixels = image.load()
     image.load()
-    image = image.convert('L', dither=Image.NONE)
+    #image = image.convert('L', dither=Image.NONE)
     image_json = {}
     image_json['size'] = image.size
     image_json['data'] = list(image.getdata())
@@ -120,7 +125,7 @@ def to_json():
         points_spread = points_randomized
         for i in range(2):
             print("Voronoi iteration {}".format(i))
-            points_spread = voronoi_spread(points_spread)
+            #points_spread = voronoi_spread(points_spread)
         cache.set('points_spread', points_spread, timeout = 60 * 60)
     image_json['analog_data'] = points_spread 
     #pixel = []
