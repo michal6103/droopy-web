@@ -10,13 +10,11 @@ from pyhull.voronoi import VoronoiTess
 # import numpy as np
 from werkzeug.contrib.cache import SimpleCache
 import logging
-from uuid import uuid4
+# from uuid import uuid4
 
 
 IMG_FOLDER = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'img/')
 ALLOWED_EXTENSIONS = set(['png', 'jpg', 'jpeg', 'gif'])
-SCALE = 0.02
-RANDOM_OVERLAP = 0.8
 
 
 app = Flask(__name__)
@@ -24,8 +22,8 @@ Bootstrap(app)
 app.debug = True
 app.config['PROPAGATE_EXCEPTIONS'] = True
 app.config['IMG_FOLDER'] = IMG_FOLDER
-app.config['IMAGE_SCALE'] = SCALE
-app.config['IMAGE_RANDOM_OVERLAP'] = RANDOM_OVERLAP
+# app.config['IMAGE_SCALE'] = SCALE
+# app.config['IMAGE_RANDOM_OVERLAP'] = RANDOM_OVERLAP
 cache = SimpleCache()
 
 
@@ -44,7 +42,7 @@ def upload_file():
         if file and allowed_file(file.filename):
             # filename = secure_filename(file.filename)
             cache.delete('points_spread')
-            filename = 'source-{}'.format(sid)
+            filename = 'source'
             file.save(os.path.join(app.config['IMG_FOLDER'], filename))
             return redirect(url_for('to_grayscale'))
             # return redirect(url_for('get_file', filename=filename))
@@ -68,29 +66,14 @@ def to_grayscale():
 
 def to_analog(image):
     points = []
-    scale = app.config['IMAGE_SCALE']
-    overlap = app.config['IMAGE_RANDOM_OVERLAP']
-    offset_x = 0.0
-    offset_y = 0.0
     pixels = list(image.getdata())
     x_size, y_size = image.size
     for y in range(y_size):
         for x in range(x_size):
-            # if y % 2:
-            #    pixel = pixels[y * x_size + x]
-            #    xr = x;
-            # else:
-            #    pixel = pixels[y * x_size - x]
-            #    xr = x_size - x;
-
-            # generate random points for every brightness point in pixel
-            # for i in range(int((255 - pixel) / 16)):
-            #    points.append(((xr + random()*overlap) * scale + offset_x,
-            #    (y + random()*overlap) * scale + offset_y))
             pixel = pixels[y * x_size + x]
             xr = x
             if not pixel:
-                points.append((xr * scale + offset_x, y * scale + offset_y))
+                points.append((xr, y))
     return points
 
 
@@ -100,9 +83,9 @@ def distance(a, b):
     return (abs(b[0] - a[0]) + abs(b[1] - a[1]))
 
 
-def find_closest(origin, points):
+def find_closest(origin, points, min = 0):
     """Find closest point to the origin from points in the list.
-    Remove colsest point from list of points abd return closest point
+    Remove closest point from list of points abd return closest point
     """
     closest = (float("inf"), float("inf"))
     closest_distance = distance(origin, closest)
@@ -114,6 +97,12 @@ def find_closest(origin, points):
             # app.logger.debug("Swapping min-distance: {}<->{}\t{}<->{}".format(closest, point, closest_distance, actual_distance))
             closest = point
             closest_distance = actual_distance
+        # If actual_distance is 1 there will be nothing closer
+        if actual_distance == 1:
+            break
+        # If actual distance is smaller or equal to minimal possible use it
+        if actual_distance <= min:
+            break
     app.logger.debug("Closest: {}<->{} =\t{}".format(origin, closest, closest_distance))
     return closest
 
@@ -160,14 +149,12 @@ def to_json():
         image = Image.open(os.path.join(app.config['IMG_FOLDER'], 'grayscale'))
     except:
         to_grayscale()
-    # grayscale_pixels = image.load()
     image.load()
-    # image = image.convert('L', dither=Image.NONE)
     image_json = {}
     image_json['size'] = image.size
-    image_json['data'] = list(image.getdata())
     points_path = cache.get('points_path')
     if points_path is None:
+        # image_json['data'] = list(image.getdata())
         points_analogue = to_analog(image)
         points_path = trace(points_analogue)
         cache.set('points_path', points_path, timeout=60 * 60 * 60)
@@ -186,5 +173,5 @@ def get_file(filename):
     return send_from_directory(app.config['IMG_FOLDER'], filename)
 
 if __name__ == '__main__':
-    app.logger.setLevel(logging.DEBUG)
+    app.logger.setLevel(logging.INFO)
     app.run(host='0.0.0.0')
