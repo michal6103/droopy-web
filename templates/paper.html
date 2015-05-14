@@ -30,7 +30,7 @@
 	myPath.strokeWidth = 1.0 / scale ;
 
 
-function onFrame(event) {
+/*function onFrame(event) {
         if (draw) {
             if (count < maxCount) {
             for(var i=count; i<count + image.size[0]; i++){
@@ -48,7 +48,19 @@ function onFrame(event) {
             //onResize(event)
                 }
         }
-}
+		}*/
+
+	function onFrame(event) {
+        if (draw) {
+            if (count < maxCount) {
+            var p = new Point(image.analog_data[maxCount - count]);
+            myPath.add(p);
+            count++;
+        } else {
+                        draw = false;
+                }
+        }
+	}
 
 function onResize(event) {
       view.center = myPath.bounds.center;

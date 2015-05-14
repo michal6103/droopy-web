@@ -11,6 +11,7 @@ from pyhull.voronoi import VoronoiTess
 from werkzeug.contrib.cache import SimpleCache
 import logging
 # from uuid import uuid4
+# from math import sqrt
 
 
 IMG_FOLDER = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'img/')
@@ -80,44 +81,130 @@ def to_analog(image):
 def distance(a, b):
     """Computes manhatan distance of a and b
     """
+    # return (sqrt((b[0] - a[0]) ** 2 + (b[1] - a[1]) ** 2))
     return (abs(b[0] - a[0]) + abs(b[1] - a[1]))
 
 
-def find_closest(origin, points, min = 0):
+def find_closest(origin, points, min=1):
     """Find closest point to the origin from points in the list.
     Remove closest point from list of points abd return closest point
     """
     closest = (float("inf"), float("inf"))
     closest_distance = distance(origin, closest)
-    # app.logger.debug("Initial distance: {}\t{}\t{}".format(origin, closest, closest_distance))
+    # app.logger.debug("Initial distance: {}\t{}\t{}".format(origin,
+    # closest, closest_distance))
     for point in points:
         actual_distance = distance(origin, point)
-        # app.logger.debug("Distance: {}\t{}\t{}".format(origin, point, actual_distance))
+        # app.logger.debug("Distance: {}\t{}\t{}".format(origin,
+        # point, actual_distance))
         if actual_distance < closest_distance:
-            # app.logger.debug("Swapping min-distance: {}<->{}\t{}<->{}".format(closest, point, closest_distance, actual_distance))
             closest = point
             closest_distance = actual_distance
-        # If actual_distance is 1 there will be nothing closer
-        if actual_distance == 1:
-            break
         # If actual distance is smaller or equal to minimal possible use it
-        if actual_distance <= min:
+        if closest_distance <= min:
             break
-    app.logger.debug("Closest: {}<->{} =\t{}".format(origin, closest, closest_distance))
-    return closest
+    app.logger.debug("Closest: {}<->{} =\t{}".format(origin,
+                                                     closest,
+                                                     closest_distance))
+    return (closest, closest_distance)
+
+
+def bounding_boxes_overlap(line1, line2):
+    x1, y1, x2, y2 = line1
+    x3, y3, x4, y4 = line2
+    x_overlap = False
+    y_overlap = False
+    if x1 > x2:
+        x1, x2 = x2, x1
+    if x3 > x4:
+        x3, x4 = x4, x3
+    if x1 < x3 < x2 or x1 < x4 < x2:
+        x_overlap = True
+    if y1 > y2:
+        y1, y2 = y2, y1
+    if y3 > y4:
+        y3, y4 = y4, y3
+    if y1 < y3 < y2 or y1 < y4 < y2:
+        y_overlap = True
+    return x_overlap and y_overlap
+
+
+def orientation(a, b, c):
+    """ Based on http://www.geeksforgeeks.org/check-if-two-given-line-segments-intersect/
+    Return 0 if a,b,c  are colinear
+    Return 1 if CW
+    Return -1 if CCW
+
+    param: a,b,c
+    """
+    d = (c[1] - a[1]) * (b[0] - a[0]) - (b[1] - a[1]) * (c[0] - a[0])
+    if d > 0:
+        return 1
+    else:
+        if d < 0:
+            return -1
+    return 0
+
+
+def is_on_segment(line, c):
+    """ Returns True if c is on segment, False otherwise. Line and c should
+        be colinear
+
+        param: line  two points
+        param: c point colinear with line
+    """
+    return bounding_boxes_overlap(line, (c, c))
+
+
+def is_colinear(line1, line2):
+    """ Check if two segments are colinear.
+    Based on http://www.geeksforgeeks.org/check-if-two-given-line-segments-intersect/
+
+    Return: True if line1 and line2 are colinear
+    Return: Fale if line1 and line2 are not colinear
+    """
+    a, b = line1
+    c, d = line2
+
+    if orientation(a, b, c) == 0 and orientation(a, b, d) == 0:
+        return True
+    else:
+        return False
+
+
+def is_intersection(line1, line2):
+    """ Check if the line1 and line2 are intersected
+    """
+    if bounding_boxes_overlap(line1, line2):
+        a, b = line1
+        c, d = line2
+        o1 = orientation(line1, c)
+        o2 = orientation(line1, d)
+        o3 = orientation(line2, a)
+        o4 = orientation(line2, b)
+        if o1 and o1 == o2:
+            return False
+        if o3 and o3 == o4:
+            return False
+        if is_colinear(line1, line2):
+            return True
+        return True
+    else:
+        return False
 
 
 def trace(points):
     """Returns sorted trace of all points
     """
-    path = []
     point = (0, 0)
+    path = []
+    path.append(point)
+    last_distance = 0
     while points:
-        point = find_closest(point, points)
+        point, last_distance = find_closest(point, points, last_distance)
         points.remove(point)
         path.append(point)
-        if len(points):
-            app.logger.debug("Points: {}\n{}".format(len(points), point))
+        app.logger.debug("Points: {}\n{}".format(len(points), point))
     return path
 
 
