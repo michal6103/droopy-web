@@ -132,8 +132,8 @@ def bounding_boxes_overlap(line1, line2):
 def orientation(a, b, c):
     """ Based on http://www.geeksforgeeks.org/check-if-two-given-line-segments-intersect/
     Return 0 if a,b,c  are colinear
-    Return 1 if CW
-    Return -1 if CCW
+    Return 1 if CCW
+    Return -1 if CW
 
     param: a,b,c
     """
@@ -191,7 +191,6 @@ def is_intersection(line1, line2):
         return True
     else:
         return False
-
 
 def trace(points):
     """Returns sorted trace of all points
