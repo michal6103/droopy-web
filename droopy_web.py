@@ -65,7 +65,7 @@ def to_grayscale():
     return send_file(full_filename, mimetype="image/png")
 
 
-def to_analog(image):
+def to_points(image):
     points = []
     pixels = list(image.getdata())
     x_size, y_size = image.size
@@ -110,8 +110,12 @@ def find_closest(origin, points, min=1):
 
 
 def bounding_boxes_overlap(line1, line2):
-    x1, y1, x2, y2 = line1
-    x3, y3, x4, y4 = line2
+    point1, point2 = line1
+    x1, y1 = point1
+    x2, y2 = point2
+    point1, point2 = line2
+    x3, y3 = point1
+    x4, y4 = point2
     x_overlap = False
     y_overlap = False
     if x1 > x2:
@@ -126,6 +130,8 @@ def bounding_boxes_overlap(line1, line2):
         y3, y4 = y4, y3
     if y1 < y3 < y2 or y1 < y4 < y2:
         y_overlap = True
+    if x_overlap or y_overlap:
+        app.logger.debug("Overlap X: {}\tOverlap Y: {}".format(x_overlap, y_overlap))
     return x_overlap and y_overlap
 
 
@@ -178,10 +184,10 @@ def is_intersection(line1, line2):
     if bounding_boxes_overlap(line1, line2):
         a, b = line1
         c, d = line2
-        o1 = orientation(line1, c)
-        o2 = orientation(line1, d)
-        o3 = orientation(line2, a)
-        o4 = orientation(line2, b)
+        o1 = orientation(a, b, c)
+        o2 = orientation(a, b, d)
+        o3 = orientation(c, d, a)
+        o4 = orientation(c, d, b)
         if o1 and o1 == o2:
             return False
         if o3 and o3 == o4:
@@ -191,6 +197,32 @@ def is_intersection(line1, line2):
         return True
     else:
         return False
+
+
+def untangle(path):
+    """ Untangle crossed line segments.
+    """
+    i = 1
+    tangled = True
+    count = len(path)
+    app.logger.debug("Path length: {}".format(count))
+    while tangled:
+        j = 1
+        tangled = False
+        line1 = (path[i - 1], path[i])
+        for j in range(i, count):
+            line2 = (path[j - 1], path[j])
+            app.logger.debug("Checking paths: {}: {} {} from range ({}, {})".format(j, line1, line2, i, count))
+            if is_intersection(line1, line2):
+                app.logger.debug("Untangling: {}\t{}\t{}\t{}".format(i - 1, i, j - 1, j))
+                path[i], path[j - 1] = path[j - 1], path[i]
+                tangled = True
+                i = 1
+        if i != count:
+            tangled = True
+        i += 1
+    return path
+
 
 def trace(points):
     """Returns sorted trace of all points
@@ -204,7 +236,8 @@ def trace(points):
         points.remove(point)
         path.append(point)
         app.logger.debug("Points: {}\n{}".format(len(points), point))
-    return path
+    untangled_path = untangle(path)
+    return untangled_path
 
 
 def voronoi_spread(points):
@@ -241,8 +274,11 @@ def to_json():
     points_path = cache.get('points_path')
     if points_path is None:
         # image_json['data'] = list(image.getdata())
-        points_analogue = to_analog(image)
-        points_path = trace(points_analogue)
+        points = to_points(image)
+        # spreaded_points = voronoi_spread(points)
+        # voronoi = VoronoiTess(spreaded_points, add_bounding_box=True)
+        # voronoi_points = voronoi.vertices
+        points_path = trace(points)
         cache.set('points_path', points_path, timeout=60 * 60 * 60)
     image_json['analog_data'] = points_path
     # pixel = []
