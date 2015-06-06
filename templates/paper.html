@@ -23,22 +23,22 @@
 	var maxCount = image.analog_data.length;
 	var count = 0;
 	var draw = true;
-	var scale = 2.0;
+	var scale = 4.0;
 	var myPath = new Path();
 
 	myPath.strokeColor = 'black';
 	myPath.strokeWidth = 1.0 / scale ;
 
 
-/*function onFrame(event) {
+function onFrame(event) {
         if (draw) {
             if (count < maxCount) {
             for(var i=count; i<count + image.size[0]; i++){
                 if( i < maxCount ){
                     var p = new Point(image.analog_data[i]);
                     myPath.add(p);
-                    //point = new Path.Circle(p, 1.0 / scale / 3.0 )
-                    //point.fillColor = 'black';
+                    point = new Path.Circle(p, 1.0 / scale / 3.0 )
+                    point.fillColor = 'black';
                     //view.center = p; 
                 }
             }
@@ -48,12 +48,12 @@
             //onResize(event)
                 }
         }
-		}*/
-
+		}
+/*
 	function onFrame(event) {
         if (draw) {
             if (count < maxCount) {
-            var p = new Point(image.analog_data[maxCount - count]);
+            var p = new Point(image.analog_data[count]);
             myPath.add(p);
             count++;
         } else {
@@ -61,7 +61,7 @@
                 }
         }
 	}
-
+*/
 function onResize(event) {
       view.center = myPath.bounds.center;
       view.zoom = scale;
