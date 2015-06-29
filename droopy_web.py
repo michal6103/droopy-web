@@ -116,6 +116,9 @@ def bounding_boxes_overlap(line1, line2):
     point1, point2 = line2
     x3, y3 = point1
     x4, y4 = point2
+    if len(set([x1, x2, x3, x4])) < 4:
+        app.logger.debug("Not enough points. Boxes not overlaping".format(line1, line2))
+        return False
     x_overlap = False
     y_overlap = False
     if x1 > x2:
@@ -124,14 +127,17 @@ def bounding_boxes_overlap(line1, line2):
         x3, x4 = x4, x3
     if x1 < x3 < x2 or x1 < x4 < x2:
         x_overlap = True
+    if x3 < x1 and  x4 > x2:
+        x_overlap = True
     if y1 > y2:
         y1, y2 = y2, y1
     if y3 > y4:
         y3, y4 = y4, y3
     if y1 < y3 < y2 or y1 < y4 < y2:
         y_overlap = True
-    if x_overlap or y_overlap:
-        app.logger.debug("Overlap X: {}\tOverlap Y: {}".format(x_overlap, y_overlap))
+    if y3 < y1 and y4 > y2:
+        y_overlap = True
+    app.logger.debug("{} - {} Overlap X: {}\tOverlap Y: {}".format(line1, line2, x_overlap, y_overlap))
     return x_overlap and y_overlap
 
 
@@ -188,14 +194,22 @@ def is_intersection(line1, line2):
         o2 = orientation(a, b, d)
         o3 = orientation(c, d, a)
         o4 = orientation(c, d, b)
+        app.logger.debug("Orientations: {},{},{},{} lines: {}\t{}".format(o1, o2, o3, o4, line1, line2))
         if o1 and o1 == o2:
+            app.logger.debug("No intersection: Colinear")
             return False
         if o3 and o3 == o4:
+            app.logger.debug("No intersection: Colinear")
             return False
         if is_colinear(line1, line2):
-            return True
+            app.logger.debug("intersection overlaping: {} - {}".format(line1, line2))
+            # return True
+            # We will ignore colinear overlapping lines
+            return False
+        app.logger.debug("intersection general: {} - {}".format(line1, line2))
         return True
     else:
+        app.logger.debug("No intersection, No bounding boxes: {} - {}".format(line1, line2))
         return False
 
 
@@ -206,22 +220,29 @@ def untangle(path):
     tangled = True
     count = len(path)
     app.logger.debug("Path length: {}".format(count))
+    app.logger.info("{}".format(path))
     while tangled:
         j = 1
         tangled = False
         line1 = (path[i - 1], path[i])
-        for j in range(i, count):
+        for j in range(i+1, count):
             line2 = (path[j - 1], path[j])
             app.logger.debug("Checking paths: {}: {} {} from range ({}, {})".format(j, line1, line2, i, count))
             if is_intersection(line1, line2):
-                app.logger.debug("Untangling: {}\t{}\t{}\t{}".format(i - 1, i, j - 1, j))
-                path[i], path[j - 1] = path[j - 1], path[i]
+                app.logger.info("Untangling: {},{} points {}\t{}\t{}\t{}".format(line1, line2, i - 1, i, j - 1, j))
+                path[i], path[j] = path[j], path[i]
                 tangled = True
-                i = 1
-        if i != count:
+        if tangled:
+            i = 1
+        if i == count-1:
+            tangled = False
+        else:
+            i += 1
             tangled = True
-        i += 1
+        app.logger.debug("Checking paths iteration: {}/{} Tangled: {}".format(i, count, tangled))
     return path
+
+
 
 
 def trace(points):
@@ -260,7 +281,6 @@ def voronoi_spread(points):
     # Last Voronoi tesselation from centered points
     # points = VoronoiTess(points_centered, add_bounding_box=True)
     return points
-
 
 @app.route('/json')
 def to_json():
