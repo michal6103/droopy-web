@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import os
-from flask import Flask, request, redirect, send_file, session
+from flask import Flask, request, redirect, send_file
 from flask import url_for, send_from_directory, render_template
 from flask_bootstrap import Bootstrap
 from PIL import Image
@@ -10,8 +10,11 @@ from pyhull.voronoi import VoronoiTess
 # import numpy as np
 from werkzeug.contrib.cache import SimpleCache
 import logging
+from random import randint
 # from uuid import uuid4
-# from math import sqrt
+#t from math import sqrt
+from pymongo import MongoClient
+
 
 
 IMG_FOLDER = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'img/')
@@ -121,21 +124,27 @@ def bounding_boxes_overlap(line1, line2):
         return False
     x_overlap = False
     y_overlap = False
+    # Convert lines to bounding boxes
     if x1 > x2:
         x1, x2 = x2, x1
     if x3 > x4:
         x3, x4 = x4, x3
-    if x1 < x3 < x2 or x1 < x4 < x2:
-        x_overlap = True
-    if x3 < x1 and  x4 > x2:
-        x_overlap = True
     if y1 > y2:
         y1, y2 = y2, y1
     if y3 > y4:
         y3, y4 = y4, y3
+    # Find if boxes overlap
+    if x1 < x3 < x2 or x1 < x4 < x2:
+        x_overlap = True
+    if x3 <= x1 and x4 >= x2:
+        x_overlap = True
+    if x1 <= x3 and x2 >= x4:
+        x_overlap = True
     if y1 < y3 < y2 or y1 < y4 < y2:
         y_overlap = True
-    if y3 < y1 and y4 > y2:
+    if y3 <= y1 and y4 >= y2:
+        y_overlap = True
+    if y1 <= x3 and y2 >= y4:
         y_overlap = True
     app.logger.debug("{} - {} Overlap X: {}\tOverlap Y: {}".format(line1, line2, x_overlap, y_overlap))
     return x_overlap and y_overlap
@@ -203,9 +212,7 @@ def is_intersection(line1, line2):
             return False
         if is_colinear(line1, line2):
             app.logger.debug("intersection overlaping: {} - {}".format(line1, line2))
-            # return True
-            # We will ignore colinear overlapping lines
-            return False
+            return True
         app.logger.debug("intersection general: {} - {}".format(line1, line2))
         return True
     else:
@@ -221,28 +228,41 @@ def untangle(path):
     count = len(path)
     app.logger.debug("Path length: {}".format(count))
     app.logger.info("{}".format(path))
+    switched = False
     while tangled:
-        j = 1
-        tangled = False
-        line1 = (path[i - 1], path[i])
-        for j in range(i+1, count):
-            line2 = (path[j - 1], path[j])
-            app.logger.debug("Checking paths: {}: {} {} from range ({}, {})".format(j, line1, line2, i, count))
+        # j = 1
+        for j in range(i + 2, count):
+            a = path[i - 1]
+            b = path[i]
+            c = path[j - 1]
+            d = path[j]
+            line1 = (a, b)
+            line2 = (c, d)
+            app.logger.debug("Checking paths: {}: {} {} from range ({}, {}/{})".format(j, line1, line2, i, j, count))
             if is_intersection(line1, line2):
-                app.logger.info("Untangling: {},{} points {}\t{}\t{}\t{}".format(line1, line2, i - 1, i, j - 1, j))
-                path[i], path[j] = path[j], path[i]
-                tangled = True
-        if tangled:
-            i = 1
-        if i == count-1:
-            tangled = False
+                # untangle shorter path
+                # 1 4 3 2 vs 1 3 2 4
+                distance1 = distance(a, d) + distance(c, b)
+                distance2 = distance(a, c) + distance(b, d)
+                if (distance1 < distance2)  == randint(0,10):
+                    # reverse path in from i to j included
+                    path[i:j+1] = path[j:i-1:-1]
+                    #path[i], path[j] = path[j], path[i]
+                else:
+                    path[i:j] = path[j-1:i-1:-1]
+                    #path[i], path[j - 1] = path[j - 1], path[i]
+                app.logger.info("Untangling: i{} j{} l1{},l2{} points {} {} {} {}".format(i, j, line1, line2, path[i - 1], path[i], path[j - 1], path[j]))
+                switched = True
+        if i == count-3 and not switched:
+                tangled = False
         else:
             i += 1
-            tangled = True
+        if switched:
+            i = 1
+            switched = False
+        app.logger.debug("{}".format(path))
         app.logger.debug("Checking paths iteration: {}/{} Tangled: {}".format(i, count, tangled))
     return path
-
-
 
 
 def trace(points):
